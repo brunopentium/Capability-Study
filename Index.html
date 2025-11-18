@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Análise de Capabilidade do Processo</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        margin: 0;
+        background: #f4f6fb;
+        color: #1f2a44;
+      }
+      header {
+        background: #0d47a1;
+        color: #fff;
+        padding: 24px;
+        text-align: center;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #cfd8dc;
+        font-size: 14px;
+        margin-bottom: 16px;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 160px;
+        resize: vertical;
+      }
+      button {
+        background: #0d47a1;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+      }
+      button:disabled {
+        background: #90a4ae;
+        cursor: not-allowed;
+      }
+      #results {
+        display: none;
+      }
+      #chart-container {
+        width: 100%;
+        height: 480px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .stats div {
+        background: #f5f9ff;
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #dfe7fd;
+      }
+      .stats span.value {
+        display: block;
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 4px;
+        color: #0d47a1;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Análise de Capabilidade do Processo</h1>
+    </header>
+    <main>
+      <section class="card">
+        <div>
+          <label for="feature">Nome da característica</label>
+          <input type="text" id="feature" placeholder="Ex.: Diâmetro do eixo" />
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div>
+            <label for="lsl">LSL (Limite Inferior)</label>
+            <input type="number" id="lsl" step="any" />
+          </div>
+          <div>
+            <label for="usl">USL (Limite Superior)</label>
+            <input type="number" id="usl" step="any" />
+          </div>
+          <div>
+            <label for="subgroup">Tamanho do subgrupo</label>
+            <input type="number" id="subgroup" min="2" value="5" />
+          </div>
+        </div>
+        <div>
+          <label for="values">Valores das medições (um valor por linha)</label>
+          <textarea id="values" placeholder="Cole os valores aqui..."></textarea>
+        </div>
+        <button id="calcBtn" onclick="handleCalculate()">Calcular Capabilidade</button>
+        <p id="status" style="text-align:center; margin-top:10px; font-weight:600;"></p>
+      </section>
+
+      <section id="results" class="card">
+        <h2 id="reportTitle"></h2>
+        <div id="chart-container"></div>
+        <div class="stats" id="stats"></div>
+      </section>
+    </main>
+
+    <script>
+      google.charts.load('current', { packages: ['corechart'] });
+
+      function handleCalculate() {
+        var feature = document.getElementById('feature').value.trim();
+        var lsl = document.getElementById('lsl').value;
+        var usl = document.getElementById('usl').value;
+        var subgroup = document.getElementById('subgroup').value;
+        var values = document.getElementById('values').value;
+        var statusEl = document.getElementById('status');
+        var button = document.getElementById('calcBtn');
+
+        if (!values.trim()) {
+          alert('Informe os valores de medição.');
+          return;
+        }
+
+        button.disabled = true;
+        statusEl.textContent = 'Calculando...';
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            statusEl.textContent = '';
+            button.disabled = false;
+            renderResults(result);
+          })
+          .withFailureHandler(function(err) {
+            statusEl.textContent = '';
+            button.disabled = false;
+            alert('Erro: ' + err.message);
+          })
+          .processAndCalculate(feature, values, lsl, usl, subgroup);
+      }
+
+      function renderResults(result) {
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('reportTitle').textContent =
+          'Process Capability Report for ' + (result.featureName || 'Processo');
+        drawHistogram(result);
+        updateStats(result);
+      }
+
+      function drawHistogram(result) {
+        var data = result.data;
+        var n = data.length;
+        var minVal = Math.min.apply(null, data.concat([result.lsl]));
+        var maxVal = Math.max.apply(null, data.concat([result.usl]));
+        var binCount = Math.max(5, Math.round(Math.sqrt(n)));
+        var binWidth = (maxVal - minVal) / binCount || 1;
+        var bins = new Array(binCount).fill(0);
+
+        data.forEach(function(value) {
+          var index = Math.floor((value - minVal) / binWidth);
+          if (index >= binCount) index = binCount - 1;
+          if (index < 0) index = 0;
+          bins[index] += 1;
+        });
+
+        var table = new google.visualization.DataTable();
+        table.addColumn('string', 'Faixa');
+        table.addColumn('number', 'Frequência');
+        table.addColumn('number', 'Curva Normal');
+
+        for (var i = 0; i < binCount; i++) {
+          var binStart = minVal + i * binWidth;
+          var binEnd = binStart + binWidth;
+          var center = (binStart + binEnd) / 2;
+          var pdf = normalPdf(center, result.mean, result.sigmaOverall);
+          var expected = pdf * binWidth * n; // escala a curva para o histograma
+          table.addRow([
+            binStart.toFixed(2) + ' - ' + binEnd.toFixed(2),
+            bins[i],
+            expected
+          ]);
+        }
+
+        var options = {
+          legend: { position: 'top' },
+          vAxis: { title: 'Frequência' },
+          hAxis: { title: 'Valor' },
+          colors: ['#1e88e5', '#e53935'],
+          seriesType: 'bars',
+          series: {
+            1: { type: 'line', lineWidth: 3, targetAxisIndex: 0 }
+          },
+          chartArea: { width: '80%', height: '70%' }
+        };
+
+        var chart = new google.visualization.ComboChart(document.getElementById('chart-container'));
+        chart.draw(table, options);
+      }
+
+      function normalPdf(x, mean, sigma) {
+        var exponent = Math.exp(-0.5 * Math.pow((x - mean) / sigma, 2));
+        return (1 / (sigma * Math.sqrt(2 * Math.PI))) * exponent;
+      }
+
+      function updateStats(result) {
+        var stats = document.getElementById('stats');
+        var formatter = function(value) { return Number(value).toFixed(3); };
+        stats.innerHTML = '';
+        var entries = [
+          { label: 'Cp', value: formatter(result.cp) },
+          { label: 'Cpk', value: formatter(result.cpk) },
+          { label: 'Pp', value: formatter(result.pp) },
+          { label: 'Ppk', value: formatter(result.ppk) },
+          { label: 'Média', value: formatter(result.mean) },
+          { label: 'Sigma (overall)', value: formatter(result.sigmaOverall) },
+          { label: 'Sigma (within)', value: formatter(result.sigmaWithin) },
+          { label: 'N', value: result.n },
+          { label: 'LSL', value: formatter(result.lsl) },
+          { label: 'USL', value: formatter(result.usl) },
+          { label: 'Subgrupo', value: result.subgroupSize }
+        ];
+
+        entries.forEach(function(item) {
+          var div = document.createElement('div');
+          div.innerHTML = '<span>' + item.label + '</span><span class="value">' + item.value + '</span>';
+          stats.appendChild(div);
+        });
+      }
+    </script>
+  </body>
+</html>
