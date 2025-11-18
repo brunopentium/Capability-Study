@@ -195,8 +195,11 @@
         table.addColumn({ type: 'string', role: 'tooltip' });
         table.addColumn('number', 'Frequência');
         table.addColumn('number', 'Curva Normal');
+        table.addColumn('number', 'LSL');
+        table.addColumn('number', 'USL');
 
         var rows = [];
+        var maxFreq = 0;
         for (var i = 0; i < binCount; i++) {
           var binStart = minVal + i * binWidth;
           var binEnd = binStart + binWidth;
@@ -204,7 +207,8 @@
           var pdf = normalPdf(center, result.mean, result.sigmaOverall);
           var expected = pdf * binWidth * n;
           var tooltip = binStart.toFixed(2) + ' - ' + binEnd.toFixed(2) + '\nFrequência: ' + bins[i];
-          rows.push([center, tooltip, bins[i], expected]);
+          maxFreq = Math.max(maxFreq, bins[i], expected);
+          rows.push([center, tooltip, bins[i], expected, null, null]);
         }
 
         var chartMin = Math.min(minVal, result.mean - 4 * result.sigmaOverall);
@@ -214,8 +218,15 @@
           var x = chartMin + (j / (extraPoints - 1)) * (chartMax - chartMin);
           var pdfVal = normalPdf(x, result.mean, result.sigmaOverall);
           var expectedVal = pdfVal * binWidth * n;
-          rows.push([x, null, null, expectedVal]);
+          maxFreq = Math.max(maxFreq, expectedVal);
+          rows.push([x, null, null, expectedVal, null, null]);
         }
+
+        var lineHeight = maxFreq * 1.05;
+        rows.push([result.lsl, null, null, null, 0, null]);
+        rows.push([result.lsl, null, null, null, lineHeight, null]);
+        rows.push([result.usl, null, null, null, null, 0]);
+        rows.push([result.usl, null, null, null, null, lineHeight]);
 
         rows.sort(function(a, b) { return a[0] - b[0]; });
         rows.forEach(function(row) { table.addRow(row); });
@@ -227,14 +238,16 @@
             title: 'Valor',
             viewWindow: { min: chartMin, max: chartMax }
           },
-          colors: ['#1e88e5', '#e53935'],
+          colors: ['#1e88e5', '#f4511e', '#c62828', '#c62828'],
           seriesType: 'bars',
           series: {
             0: { type: 'bars', targetAxisIndex: 0 },
-            1: { type: 'line', lineWidth: 3, targetAxisIndex: 0 }
+            1: { type: 'line', lineWidth: 3, targetAxisIndex: 0 },
+            2: { type: 'line', lineWidth: 2, targetAxisIndex: 0 },
+            3: { type: 'line', lineWidth: 2, targetAxisIndex: 0 }
           },
           curveType: 'function',
-          bar: { groupWidth: '95%' },
+          bar: { groupWidth: '100%' },
           chartArea: { width: '80%', height: '70%' }
         };
 
