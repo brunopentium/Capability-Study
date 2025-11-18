@@ -33,8 +33,8 @@ function processAndCalculate(featureName, rawDataText, lsl, usl, subgroupSize) {
   if (isNaN(lsl) || isNaN(usl)) {
     throw new Error('Informe LSL e USL válidos.');
   }
-  if (isNaN(subgroupSize) || subgroupSize < 2) {
-    throw new Error('Informe um tamanho de subgrupo inteiro maior ou igual a 2.');
+  if (isNaN(subgroupSize) || subgroupSize < 1) {
+    throw new Error('Informe um tamanho de subgrupo inteiro maior ou igual a 1.');
   }
 
   // Persiste os dados na aba "Dados" da planilha ativa, sobrescrevendo o conteúdo anterior.
@@ -103,9 +103,24 @@ function calculateCapability(data, lsl, usl, subgroupSize) {
  * Implementação similar ao método utilizado por softwares estatísticos para a variabilidade "within".
  */
 function calculateWithinSigma(data, subgroupSize) {
+  if (subgroupSize === 1) {
+    if (data.length < 2) {
+      return 0;
+    }
+
+    var movingRanges = [];
+    for (var i = 1; i < data.length; i++) {
+      movingRanges.push(Math.abs(data[i] - data[i - 1]));
+    }
+
+    var mrBar = movingRanges.reduce(function(sum, value) { return sum + value; }, 0) / movingRanges.length;
+    var d2 = 1.128; // constante para cartas de indivíduos e amplitude móvel
+    return mrBar / d2;
+  }
+
   var groups = [];
-  for (var i = 0; i + subgroupSize <= data.length; i += subgroupSize) {
-    groups.push(data.slice(i, i + subgroupSize));
+  for (var j = 0; j + subgroupSize <= data.length; j += subgroupSize) {
+    groups.push(data.slice(j, j + subgroupSize));
   }
 
   if (groups.length === 0) {

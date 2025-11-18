@@ -114,7 +114,7 @@
           </div>
           <div>
             <label for="subgroup">Tamanho do subgrupo</label>
-            <input type="number" id="subgroup" min="2" value="5" />
+            <input type="number" id="subgroup" min="1" value="5" />
           </div>
         </div>
         <div>
@@ -179,7 +179,7 @@
         var n = data.length;
         var minVal = Math.min.apply(null, data.concat([result.lsl]));
         var maxVal = Math.max.apply(null, data.concat([result.usl]));
-        var binCount = Math.max(5, Math.round(Math.sqrt(n)));
+        var binCount = computeBinCount(data, minVal, maxVal);
         var binWidth = (maxVal - minVal) / binCount || 1;
         var bins = new Array(binCount).fill(0);
 
@@ -191,37 +191,82 @@
         });
 
         var table = new google.visualization.DataTable();
-        table.addColumn('string', 'Faixa');
+        table.addColumn('number', 'Valor');
+        table.addColumn({ type: 'string', role: 'tooltip' });
         table.addColumn('number', 'Frequência');
         table.addColumn('number', 'Curva Normal');
 
+        var rows = [];
         for (var i = 0; i < binCount; i++) {
           var binStart = minVal + i * binWidth;
           var binEnd = binStart + binWidth;
           var center = (binStart + binEnd) / 2;
           var pdf = normalPdf(center, result.mean, result.sigmaOverall);
-          var expected = pdf * binWidth * n; // escala a curva para o histograma
-          table.addRow([
-            binStart.toFixed(2) + ' - ' + binEnd.toFixed(2),
-            bins[i],
-            expected
-          ]);
+          var expected = pdf * binWidth * n;
+          var tooltip = binStart.toFixed(2) + ' - ' + binEnd.toFixed(2) + '\nFrequência: ' + bins[i];
+          rows.push([center, tooltip, bins[i], expected]);
         }
+
+        var chartMin = Math.min(minVal, result.mean - 4 * result.sigmaOverall);
+        var chartMax = Math.max(maxVal, result.mean + 4 * result.sigmaOverall);
+        var extraPoints = 120;
+        for (var j = 0; j < extraPoints; j++) {
+          var x = chartMin + (j / (extraPoints - 1)) * (chartMax - chartMin);
+          var pdfVal = normalPdf(x, result.mean, result.sigmaOverall);
+          var expectedVal = pdfVal * binWidth * n;
+          rows.push([x, null, null, expectedVal]);
+        }
+
+        rows.sort(function(a, b) { return a[0] - b[0]; });
+        rows.forEach(function(row) { table.addRow(row); });
 
         var options = {
           legend: { position: 'top' },
           vAxis: { title: 'Frequência' },
-          hAxis: { title: 'Valor' },
+          hAxis: {
+            title: 'Valor',
+            viewWindow: { min: chartMin, max: chartMax }
+          },
           colors: ['#1e88e5', '#e53935'],
           seriesType: 'bars',
           series: {
+            0: { type: 'bars', targetAxisIndex: 0 },
             1: { type: 'line', lineWidth: 3, targetAxisIndex: 0 }
           },
+          curveType: 'function',
+          bar: { groupWidth: '95%' },
           chartArea: { width: '80%', height: '70%' }
         };
 
         var chart = new google.visualization.ComboChart(document.getElementById('chart-container'));
         chart.draw(table, options);
+      }
+
+      function percentile(sorted, p) {
+        if (sorted.length === 0) return 0;
+        var index = (sorted.length - 1) * p;
+        var lower = Math.floor(index);
+        var upper = Math.ceil(index);
+        if (upper >= sorted.length) return sorted[lower];
+        var weight = index - lower;
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * weight;
+      }
+
+      function computeBinCount(data, minVal, maxVal) {
+        if (data.length <= 1) {
+          return 1;
+        }
+
+        var sorted = data.slice().sort(function(a, b) { return a - b; });
+        var q1 = percentile(sorted, 0.25);
+        var q3 = percentile(sorted, 0.75);
+        var iqr = q3 - q1;
+        var fdWidth = iqr > 0 ? (2 * iqr) / Math.cbrt(data.length) : 0;
+        var fdBins = fdWidth > 0 ? Math.round((maxVal - minVal) / fdWidth) : 0;
+        var sturges = Math.ceil(Math.log2(data.length) + 1);
+        var sqrtChoice = Math.ceil(Math.sqrt(data.length));
+        var binCount = Math.max(10, fdBins, sturges, sqrtChoice);
+        return Math.min(Math.max(binCount, 1), 60);
       }
 
       function normalPdf(x, mean, sigma) {
