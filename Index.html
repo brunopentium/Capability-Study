@@ -75,6 +75,7 @@
       }
       input[type="text"],
       input[type="number"],
+      select,
       textarea {
         width: 100%;
         padding: 10px 12px;
@@ -271,6 +272,20 @@
           <label for="values">Valores das medições (um valor por linha)</label>
           <textarea id="values" placeholder="Cole os valores aqui..."></textarea>
         </div>
+        <div>
+          <label for="reportLanguage">Idioma do relatório</label>
+          <select id="reportLanguage">
+            <option value="pt">Português</option>
+            <option value="en">Inglês</option>
+            <option value="es">Espanhol</option>
+            <option value="fr">Francês</option>
+            <option value="de">Alemão</option>
+            <option value="zh">Chinês</option>
+            <option value="ja">Japonês</option>
+            <option value="ko">Coreano</option>
+            <option value="it">Italiano</option>
+          </select>
+        </div>
         <button id="calcBtn" onclick="handleCalculate()">Calcular Capabilidade</button>
         <p id="status" style="text-align:center; margin-top:10px; font-weight:600;"></p>
       </section>
@@ -300,6 +315,7 @@
         var usl = document.getElementById('usl').value;
         var subgroup = document.getElementById('subgroup').value;
         var values = document.getElementById('values').value;
+        var reportLanguage = document.getElementById('reportLanguage').value;
         var statusEl = document.getElementById('status');
         var button = document.getElementById('calcBtn');
 
@@ -315,6 +331,7 @@
           .withSuccessHandler(function(result) {
             statusEl.textContent = '';
             button.disabled = false;
+            result.reportLanguage = reportLanguage;
             renderResults(result);
           })
           .withFailureHandler(function(err) {
@@ -354,12 +371,6 @@
         title.textContent =
           'Process Capability Report for ' + (result.featureName || 'Process');
 
-        var subtitle = document.createElement('p');
-        subtitle.className = 'result-card__meta';
-        subtitle.textContent =
-          'Limites ' + numberOrDash(result.lsl, 2) + ' - ' + numberOrDash(result.usl, 2) +
-          ' • Subgrupo ' + numberOrDash(result.subgroupSize) + ' • N = ' + numberOrDash(result.n);
-
         var chartContainer = document.createElement('div');
         chartContainer.className = 'chart-container';
         chartContainer.id = 'chart-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
@@ -368,7 +379,6 @@
         statsContainer.className = 'stats';
 
         card.appendChild(title);
-        card.appendChild(subtitle);
         card.appendChild(chartContainer);
         card.appendChild(statsContainer);
 
