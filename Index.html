@@ -10,6 +10,7 @@
         margin: 0;
         background: #f4f6fb;
         color: #1f2a44;
+        font-size: 16px;
       }
       header {
         background: #0d47a1;
@@ -18,9 +19,9 @@
         text-align: center;
       }
       main {
-        max-width: 1100px;
+        width: min(95vw, 1300px);
         margin: 0 auto;
-        padding: 24px;
+        padding: 32px 24px 48px;
       }
       .card {
         background: #fff;
@@ -69,7 +70,7 @@
       }
       #chart-container {
         width: 100%;
-        height: 480px;
+        height: 520px;
       }
       .stats {
         display: grid;
@@ -91,6 +92,32 @@
         margin-top: 4px;
         color: #0d47a1;
       }
+      .input-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      @media (min-width: 1024px) {
+        header {
+          padding: 32px;
+        }
+        main {
+          padding: 48px 32px 72px;
+        }
+        .card {
+          padding: 32px;
+        }
+        .input-grid {
+          grid-template-columns: repeat(3, minmax(220px, 1fr));
+          gap: 20px;
+        }
+        #chart-container {
+          height: 580px;
+        }
+        .stats {
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+      }
     </style>
   </head>
   <body>
@@ -103,7 +130,7 @@
           <label for="feature">Nome da característica</label>
           <input type="text" id="feature" placeholder="Ex.: Diâmetro do eixo" />
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div class="input-grid">
           <div>
             <label for="lsl">LSL (Limite Inferior)</label>
             <input type="number" id="lsl" step="any" />
@@ -249,7 +276,11 @@
           chartArea: { width: '80%', height: '70%' }
         };
 
-        var chart = new google.visualization.ComboChart(document.getElementById('chart-container'));
+        var container = document.getElementById('chart-container');
+        var chart = new google.visualization.ComboChart(container);
+        google.visualization.events.addListener(chart, 'ready', function() {
+          ensureWideBars(container);
+        });
         chart.draw(table, options);
       }
 
@@ -307,6 +338,34 @@
           var div = document.createElement('div');
           div.innerHTML = '<span>' + item.label + '</span><span class="value">' + item.value + '</span>';
           stats.appendChild(div);
+        });
+      }
+
+      function ensureWideBars(container) {
+        var MIN_BAR_WIDTH = 18;
+        var svg = container.querySelector('svg');
+        if (!svg) {
+          return;
+        }
+
+        var bars = svg.querySelectorAll('rect');
+        bars.forEach(function(bar) {
+          var fill = (bar.getAttribute('fill') || '').toLowerCase();
+          if (fill !== '#1e88e5') {
+            return;
+          }
+
+          var width = parseFloat(bar.getAttribute('width'));
+          if (isNaN(width) || width >= MIN_BAR_WIDTH) {
+            return;
+          }
+
+          var delta = MIN_BAR_WIDTH - width;
+          var x = parseFloat(bar.getAttribute('x'));
+          if (!isNaN(x)) {
+            bar.setAttribute('x', x - delta / 2);
+          }
+          bar.setAttribute('width', MIN_BAR_WIDTH);
         });
       }
     </script>
