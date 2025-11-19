@@ -455,15 +455,22 @@
         document.getElementById('clearBtn').disabled = true;
 
         var { jsPDF } = window.jspdf;
-        var pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+        var pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
         for (var i = 0; i < resultEntries.length; i++) {
           var card = resultEntries[i].card;
-          var canvas = await html2canvas(card, { scale: 2, useCORS: true });
+          var canvas = await html2canvas(card, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+          });
           var imgData = canvas.toDataURL('image/png');
           var pageWidth = pdf.internal.pageSize.getWidth();
           var pageHeight = pdf.internal.pageSize.getHeight();
-          var ratio = Math.min((pageWidth * 0.9) / canvas.width, (pageHeight * 0.9) / canvas.height);
+          var margin = 36;
+          var maxWidth = pageWidth - margin * 2;
+          var maxHeight = pageHeight - margin * 2;
+          var ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
           var imgWidth = canvas.width * ratio;
           var imgHeight = canvas.height * ratio;
           var x = (pageWidth - imgWidth) / 2;
@@ -471,7 +478,7 @@
 
           pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
           if (i < resultEntries.length - 1) {
-            pdf.addPage();
+            pdf.addPage('a4', 'landscape');
           }
         }
 
