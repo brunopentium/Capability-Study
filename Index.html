@@ -5,30 +5,68 @@
     <title>Análise de Capabilidade do Processo</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
+      :root {
+        --primary: #0d47a1;
+        --primary-dark: #072f6b;
+        --secondary: #1de9b6;
+        --bg: #f4f6fb;
+        --card-bg: #ffffff;
+        --muted: #7a869a;
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
         font-family: 'Segoe UI', Tahoma, sans-serif;
         margin: 0;
-        background: #f4f6fb;
-        color: #1f2a44;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, #f2f7ff 0%, #eef2ff 45%, #e5ebff 100%);
+        color: #0f1c3f;
         font-size: 16px;
       }
       header {
-        background: #0d47a1;
+        background: linear-gradient(135deg, #0d47a1, #1a237e, #311b92);
         color: #fff;
-        padding: 24px;
+        padding: 40px 20px 60px;
         text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      header::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.15), transparent 45%),
+          radial-gradient(circle at 80% 0%, rgba(255, 255, 255, 0.12), transparent 55%);
+        pointer-events: none;
+      }
+      header h1 {
+        position: relative;
+        margin: 0;
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
       }
       main {
-        width: min(95vw, 1300px);
-        margin: 0 auto;
-        padding: 32px 24px 48px;
+        width: min(92vw, 1200px);
+        margin: -40px auto 48px;
+        padding: 0 20px 40px;
+        position: relative;
       }
       .card {
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        padding: 24px;
-        margin-bottom: 24px;
+        background: var(--card-bg);
+        border-radius: 24px;
+        box-shadow: 0 25px 80px rgba(13, 71, 161, 0.12);
+        padding: 32px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+      .card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        border: 1px solid rgba(13, 71, 161, 0.08);
       }
       label {
         display: block;
@@ -51,19 +89,27 @@
         resize: vertical;
       }
       button {
-        background: #0d47a1;
+        background: linear-gradient(120deg, var(--primary), var(--primary-dark));
         color: #fff;
         border: none;
-        border-radius: 8px;
-        padding: 14px 24px;
+        border-radius: 12px;
+        padding: 16px 24px;
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
         width: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        box-shadow: 0 15px 30px rgba(7, 47, 107, 0.25);
+      }
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 35px rgba(7, 47, 107, 0.25);
       }
       button:disabled {
         background: #90a4ae;
         cursor: not-allowed;
+        box-shadow: none;
+        opacity: 0.65;
       }
       #resultsSection {
         display: none;
@@ -71,44 +117,100 @@
       }
       .results-actions {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-bottom: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .results-actions button {
+        width: 100%;
       }
       .results-collection {
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 32px;
       }
       .result-card {
         padding-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
       }
       .result-card h2 {
-        text-align: center;
+        text-align: left;
+        margin: 0 0 8px;
+        font-size: 1.4rem;
+        color: var(--primary);
+      }
+      .result-card__meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
       }
       .chart-container {
         width: 100%;
         height: 520px;
+        border-radius: 18px;
+        background: #f8fbff;
+        padding: 12px;
       }
       .stats {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .metric-highlight {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-top: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
       }
-      .stats div {
-        background: #f5f9ff;
-        border-radius: 8px;
-        padding: 12px;
-        text-align: center;
-        border: 1px solid #dfe7fd;
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 14px;
       }
-      .stats span.value {
-        display: block;
-        font-size: 18px;
+      .metric-card {
+        background: #f8fbff;
+        border-radius: 16px;
+        padding: 18px 20px;
+        border: 1px solid rgba(13, 71, 161, 0.07);
+        position: relative;
+        overflow: hidden;
+      }
+      .metric-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        opacity: 0.25;
+        background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.7), transparent 55%);
+        pointer-events: none;
+      }
+      .metric-card--focus {
+        background: linear-gradient(135deg, rgba(13, 71, 161, 0.92), rgba(33, 150, 243, 0.8));
+        color: #fff;
+        border: none;
+        box-shadow: 0 18px 35px rgba(13, 71, 161, 0.3);
+      }
+      .metric-card--focus.metric-card--calm {
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.9), rgba(0, 230, 118, 0.8));
+      }
+      .metric-label {
+        font-size: 0.9rem;
         font-weight: 600;
-        margin-top: 4px;
-        color: #0d47a1;
+        color: inherit;
+      }
+      .metric-value {
+        display: block;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+      .metric-card--subtle .metric-value {
+        font-size: 1.4rem;
+        color: var(--primary);
+      }
+      .metric-card--subtle .metric-label {
+        color: var(--muted);
+        font-weight: 500;
       }
       #reportTitle {
         display: block;
@@ -119,36 +221,23 @@
         font-size: 26px;
         font-weight: 700;
         text-align: center;
-        color: #0d47a1;
+        color: var(--primary);
         background: #e3f2fd;
         border-radius: 999px;
-        border: 2px solid #0d47a1;
+        border: 2px solid var(--primary);
         box-shadow: 0 6px 12px rgba(13, 71, 161, 0.15);
       }
       .input-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
       }
       @media (min-width: 1024px) {
-        header {
-          padding: 32px;
-        }
         main {
-          padding: 48px 32px 72px;
-        }
-        .card {
-          padding: 32px;
-        }
-        .input-grid {
-          grid-template-columns: repeat(3, minmax(220px, 1fr));
-          gap: 20px;
+          padding: 0 32px 72px;
         }
         .chart-container {
           height: 580px;
-        }
-        .stats {
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
       }
     </style>
@@ -255,9 +344,20 @@
         var card = document.createElement('section');
         card.className = 'card result-card';
 
+        var numberOrDash = function(value, decimals) {
+          var num = Number(value);
+          return isNaN(num) ? '--' : num.toFixed(decimals || 0);
+        };
+
         var title = document.createElement('h2');
         title.textContent =
           'Process Capability Report for ' + (result.featureName || 'Process');
+
+        var subtitle = document.createElement('p');
+        subtitle.className = 'result-card__meta';
+        subtitle.textContent =
+          'Limites ' + numberOrDash(result.lsl, 2) + ' - ' + numberOrDash(result.usl, 2) +
+          ' • Subgrupo ' + numberOrDash(result.subgroupSize) + ' • N = ' + numberOrDash(result.n);
 
         var chartContainer = document.createElement('div');
         chartContainer.className = 'chart-container';
@@ -267,6 +367,7 @@
         statsContainer.className = 'stats';
 
         card.appendChild(title);
+        card.appendChild(subtitle);
         card.appendChild(chartContainer);
         card.appendChild(statsContainer);
 
@@ -394,28 +495,55 @@
       }
 
       function updateStats(result, container) {
-        var stats = container;
         var formatter = function(value) { return Number(value).toFixed(3); };
-        stats.innerHTML = '';
-        var entries = [
-          { label: 'Cp', value: formatter(result.cp) },
-          { label: 'Cpk', value: formatter(result.cpk) },
-          { label: 'Pp', value: formatter(result.pp) },
-          { label: 'Ppk', value: formatter(result.ppk) },
-          { label: 'Mean', value: formatter(result.mean) },
+        container.innerHTML = '';
+
+        var focusMetrics = [
+          { label: 'Cp', value: formatter(result.cp), calm: false },
+          { label: 'Cpk', value: formatter(result.cpk), calm: false },
+          { label: 'Pp', value: formatter(result.pp), calm: true },
+          { label: 'Ppk', value: formatter(result.ppk), calm: true }
+        ];
+
+        var supportingMetrics = [
+          { label: 'Média', value: formatter(result.mean) },
           { label: 'Sigma (overall)', value: formatter(result.sigmaOverall) },
           { label: 'Sigma (within)', value: formatter(result.sigmaWithin) },
           { label: 'N', value: result.n },
           { label: 'LSL', value: formatter(result.lsl) },
           { label: 'USL', value: formatter(result.usl) },
-          { label: 'Subgroup Size', value: result.subgroupSize }
+          { label: 'Subgrupo', value: result.subgroupSize }
         ];
 
-        entries.forEach(function(item) {
-          var div = document.createElement('div');
-          div.innerHTML = '<span>' + item.label + '</span><span class="value">' + item.value + '</span>';
-          stats.appendChild(div);
+        var highlightWrapper = document.createElement('div');
+        highlightWrapper.className = 'metric-highlight';
+        focusMetrics.forEach(function(item) {
+          var card = document.createElement('div');
+          card.className = 'metric-card metric-card--focus' + (item.calm ? ' metric-card--calm' : '');
+          card.innerHTML =
+            '<span class="metric-label">' +
+            item.label +
+            '</span><span class="metric-value">' +
+            item.value +
+            '</span>';
+          highlightWrapper.appendChild(card);
         });
+        container.appendChild(highlightWrapper);
+
+        var gridWrapper = document.createElement('div');
+        gridWrapper.className = 'metric-grid';
+        supportingMetrics.forEach(function(item) {
+          var card = document.createElement('div');
+          card.className = 'metric-card metric-card--subtle';
+          card.innerHTML =
+            '<span class="metric-label">' +
+            item.label +
+            '</span><span class="metric-value">' +
+            item.value +
+            '</span>';
+          gridWrapper.appendChild(card);
+        });
+        container.appendChild(gridWrapper);
       }
 
       function ensureWideBars(container) {
@@ -498,7 +626,9 @@
         if (!resultEntries.length) {
           return;
         }
-        var confirmClear = confirm('Tem certeza de que deseja limpar os estudos? Certifique-se de já ter exportado os dados desejados, pois eles serão perdidos.');
+        var confirmClear = confirm(
+          'Tem certeza de que deseja limpar os estudos? Certifique-se de já ter exportado os dados desejados, pois eles serão perdidos.'
+        );
         if (!confirmClear) {
           return;
         }
