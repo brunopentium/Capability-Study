@@ -344,13 +344,27 @@
           throw new Error('Nenhum valor numérico válido foi informado.');
         }
 
-        lsl = parseFloat(lsl);
-        usl = parseFloat(usl);
+        var lslText = lsl != null ? lsl.toString().trim() : '';
+        var uslText = usl != null ? usl.toString().trim() : '';
+
+        var parsedLsl = lslText === '' ? null : parseFloat(lslText);
+        var parsedUsl = uslText === '' ? null : parseFloat(uslText);
+
+        if (lslText !== '' && isNaN(parsedLsl)) {
+          throw new Error('Informe um LSL numérico válido ou deixe em branco.');
+        }
+        if (uslText !== '' && isNaN(parsedUsl)) {
+          throw new Error('Informe um USL numérico válido ou deixe em branco.');
+        }
+
+        if (parsedLsl === null && parsedUsl === null) {
+          throw new Error('Informe pelo menos um limite (LSL ou USL).');
+        }
+
+        lsl = parsedLsl;
+        usl = parsedUsl;
         subgroupSize = parseInt(subgroupSize, 10);
 
-        if (isNaN(lsl) || isNaN(usl)) {
-          throw new Error('Informe LSL e USL válidos.');
-        }
         if (isNaN(subgroupSize) || subgroupSize < 1) {
           throw new Error('Informe um tamanho de subgrupo inteiro maior ou igual a 1.');
         }
@@ -384,16 +398,20 @@
         if (sigmaOverall === 0) sigmaOverall = Number.EPSILON;
         if (sigmaWithin === 0) sigmaWithin = Number.EPSILON;
 
-        var cp = (usl - lsl) / (6 * sigmaWithin);
-        var cpk = Math.min(
-          (usl - mean) / (3 * sigmaWithin),
-          (mean - lsl) / (3 * sigmaWithin)
-        );
-        var pp = (usl - lsl) / (6 * sigmaOverall);
-        var ppk = Math.min(
-          (usl - mean) / (3 * sigmaOverall),
-          (mean - lsl) / (3 * sigmaOverall)
-        );
+        var hasLsl = Number.isFinite(lsl);
+        var hasUsl = Number.isFinite(usl);
+
+        var cp = hasLsl && hasUsl ? (usl - lsl) / (6 * sigmaWithin) : null;
+        var cpkUpper = hasUsl ? (usl - mean) / (3 * sigmaWithin) : Infinity;
+        var cpkLower = hasLsl ? (mean - lsl) / (3 * sigmaWithin) : Infinity;
+        var cpk = Math.min(cpkUpper, cpkLower);
+        cpk = Number.isFinite(cpk) ? cpk : null;
+
+        var pp = hasLsl && hasUsl ? (usl - lsl) / (6 * sigmaOverall) : null;
+        var ppkUpper = hasUsl ? (usl - mean) / (3 * sigmaOverall) : Infinity;
+        var ppkLower = hasLsl ? (mean - lsl) / (3 * sigmaOverall) : Infinity;
+        var ppk = Math.min(ppkUpper, ppkLower);
+        ppk = Number.isFinite(ppk) ? ppk : null;
 
         return {
           n: n,
@@ -714,8 +732,11 @@
         var lang = getResultLanguage(result);
         var data = result.data;
         var n = data.length;
-        var minVal = Math.min.apply(null, data.concat([result.lsl]));
-        var maxVal = Math.max.apply(null, data.concat([result.usl]));
+        var specLimits = [];
+        if (Number.isFinite(result.lsl)) specLimits.push(result.lsl);
+        if (Number.isFinite(result.usl)) specLimits.push(result.usl);
+        var minVal = Math.min.apply(null, data.concat(specLimits));
+        var maxVal = Math.max.apply(null, data.concat(specLimits));
         var binCount = computeBinCount(data, minVal, maxVal);
         var binWidth = (maxVal - minVal) / binCount || 1;
         var bins = new Array(binCount).fill(0);
@@ -942,8 +963,12 @@
           svg.appendChild(line);
         }
 
-        addSpecLine(result.lsl, '#c62828');
-        addSpecLine(result.usl, '#c62828');
+        if (Number.isFinite(result.lsl)) {
+          addSpecLine(result.lsl, '#c62828');
+        }
+        if (Number.isFinite(result.usl)) {
+          addSpecLine(result.usl, '#c62828');
+        }
 
         // Legenda
         var legendX = marginLeft + 10;
@@ -991,7 +1016,9 @@
           translate(lang, 'normalCurveLabel'),
           'line'
         );
-        addLegendItem(legendY + 2 * legendSpacing, '#c62828', 'LSL / USL', 'line');
+        if (specLimits.length > 0) {
+          addLegendItem(legendY + 2 * legendSpacing, '#c62828', 'LSL / USL', 'line');
+        }
 
         container.appendChild(svg);
       }
@@ -1016,13 +1043,19 @@
         var formatter = function (value) {
           return Number(value).toFixed(3);
         };
+        var formatMetric = function (value) {
+          return Number.isFinite(value) ? formatter(value) : 'N.A';
+        };
+        var formatSpecLimit = function (value) {
+          return Number.isFinite(value) ? formatter(value) : 'N.A';
+        };
         container.innerHTML = '';
 
         var focusMetrics = [
-          { label: 'Cp', value: formatter(result.cp), calm: false },
-          { label: 'Cpk', value: formatter(result.cpk), calm: false },
-          { label: 'Pp', value: formatter(result.pp), calm: true },
-          { label: 'Ppk', value: formatter(result.ppk), calm: true }
+          { label: 'Cp', value: formatMetric(result.cp), calm: false },
+          { label: 'Cpk', value: formatMetric(result.cpk), calm: false },
+          { label: 'Pp', value: formatMetric(result.pp), calm: true },
+          { label: 'Ppk', value: formatMetric(result.ppk), calm: true }
         ];
 
         var supportingMetrics = [
@@ -1036,8 +1069,8 @@
             value: formatter(result.sigmaWithin)
           },
           { label: translate(lang, 'nLabel'), value: result.n },
-          { label: 'LSL', value: formatter(result.lsl) },
-          { label: 'USL', value: formatter(result.usl) },
+          { label: 'LSL', value: formatSpecLimit(result.lsl) },
+          { label: 'USL', value: formatSpecLimit(result.usl) },
           { label: translate(lang, 'subgroupLabel'), value: result.subgroupSize }
         ];
 
