@@ -229,34 +229,6 @@
         transform: translate(-50%, -120%);
       }
 
-      /* Estilo para impressão (PDF) */
-      @media print {
-        body {
-          background: #ffffff;
-        }
-        header {
-          box-shadow: none;
-        }
-        main {
-          width: 100%;
-          margin: 0;
-          padding: 0 10mm 10mm;
-        }
-        /* Esconde a área de entrada, deixa só os resultados */
-        section.card:first-of-type {
-          display: none;
-        }
-        #clearBtn {
-          display: none;
-        }
-        #exportBtn {
-          display: none;
-        }
-        #status {
-          display: none;
-        }
-      }
-
       @media (min-width: 1024px) {
         main {
           padding: 0 32px 72px;
@@ -274,7 +246,6 @@
   /* Esconde cabeçalho e área de inputs na impressão */
   header,
   main > .card:first-of-type,
-  #exportBtn,
   #clearBtn {
     display: none !important;
   }
@@ -346,9 +317,6 @@
 
       <section id="resultsSection">
         <div class="results-actions">
-          <button id="exportBtn" onclick="exportResultsAsPdf()" disabled>
-            Exportar resultados em PDF
-          </button>
           <button id="clearBtn" onclick="clearResults()" disabled>
             Limpar estudos
           </button>
@@ -1111,72 +1079,25 @@
 
       function updateActionButtons() {
         var hasResults = resultEntries.length > 0;
-        document.getElementById('exportBtn').disabled = !hasResults;
         document.getElementById('clearBtn').disabled = !hasResults;
       }
 
-   async function exportResultsAsPdf() {
-  if (!resultEntries.length) {
-    alert('Não há estudos para exportar.');
-    return;
-  }
+      function clearResults() {
+        var collection = document.getElementById('resultsCollection');
+        collection.innerHTML = '';
+        resultEntries = [];
 
-  // Abre uma nova janela apenas para impressão
-  var printWindow = window.open('', '_blank');
-  var doc = printWindow.document;
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('status').textContent = '';
 
-  // Pega o CSS da página atual (o conteúdo do <style>)
-  var styleEl = document.querySelector('style');
-  var styleContent = styleEl ? styleEl.innerHTML : '';
+        document.getElementById('feature').value = '';
+        document.getElementById('lsl').value = '';
+        document.getElementById('usl').value = '';
+        document.getElementById('subgroup').value = 5;
+        document.getElementById('values').value = '';
 
-  // Monta o HTML da janela de impressão
-  doc.open();
-  doc.write(
-    '<html><head>' +
-      '<meta charset="UTF-8">' +
-      '<title>Relatório de Capabilidade</title>' +
-      '<style>' +
-      styleContent +
-      `
-      @media print {
-        body {
-          background: #ffffff !important;
-        }
-        /* Não tem header nem formulário na janela de impressão,
-           então aqui é mais por garantia */
-        .card {
-          box-shadow: none !important;
-          border: 1px solid #ddd !important;
-        }
-        .result-card {
-          page-break-after: always;
-        }
+        updateActionButtons();
       }
-      ` +
-      '</style>' +
-      '</head><body>' +
-      '<main id="printMain"></main>' +
-      '</body></html>'
-  );
-  doc.close();
-
-  // Garante que o DOM da nova janela está pronto
-  await new Promise(function (resolve) {
-    printWindow.onload = resolve;
-  });
-
-  var printMain = printWindow.document.getElementById('printMain');
-
-  // Clona os cards de resultado e leva para a nova janela
-  resultEntries.forEach(function (entry) {
-    var clonedCard = entry.card.cloneNode(true);
-    printMain.appendChild(clonedCard);
-  });
-
-  // Foca e manda imprimir
-  printWindow.focus();
-  printWindow.print();
-}
 
 
 
@@ -1184,7 +1105,7 @@
       window.addEventListener('beforeunload', function (event) {
         if (resultEntries.length > 0) {
           var message =
-            'Existem estudos não exportados. Já exportou os PDFs necessários? Os dados serão perdidos.';
+            'Existem estudos calculados que serão perdidos se você sair desta página.';
           event.preventDefault();
           event.returnValue = message;
           return message;
