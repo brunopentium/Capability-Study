@@ -235,13 +235,17 @@
       function renderResults(result) {
         var section = document.getElementById('resultsSection');
         var collection = document.getElementById('resultsCollection');
+        section.style.display = 'block';
+
         var entry = createResultCard(result);
         collection.appendChild(entry.card);
-        drawHistogram(result, entry.chartContainer);
-        updateStats(result, entry.statsContainer);
         resultEntries.push(entry);
-        section.style.display = 'block';
         updateActionButtons();
+
+        requestAnimationFrame(function() {
+          drawHistogram(result, entry.chartContainer);
+          updateStats(result, entry.statsContainer);
+        });
       }
 
       function createResultCard(result) {
