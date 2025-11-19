@@ -136,7 +136,8 @@
         gap: 28px;
       }
       .result-card h2 {
-        text-align: left;
+        text-align: center;
+        width: 100%;
         margin: 0 0 8px;
         font-size: 1.4rem;
         color: var(--primary);
@@ -456,9 +457,12 @@
 
         var chartContainer = typeof container === 'string' ? document.getElementById(container) : container;
         var chart = new google.visualization.ComboChart(chartContainer);
-        google.visualization.events.addListener(chart, 'ready', function() {
+        var keepBarsWide = function() {
           ensureWideBars(chartContainer);
-        });
+        };
+        google.visualization.events.addListener(chart, 'ready', keepBarsWide);
+        google.visualization.events.addListener(chart, 'onmouseover', keepBarsWide);
+        google.visualization.events.addListener(chart, 'onmouseout', keepBarsWide);
         chart.draw(table, options);
       }
 
