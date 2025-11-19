@@ -308,6 +308,143 @@
     <script>
       google.charts.load('current', { packages: ['corechart'] });
       var resultEntries = [];
+      var translations = {
+        pt: {
+          reportTitleTemplate: 'Relatório de Capabilidade do Processo para {{feature}}',
+          defaultFeatureName: 'Processo',
+          valueAxisTitle: 'Valor',
+          frequencyAxisTitle: 'Frequência',
+          normalCurveLabel: 'Curva Normal',
+          histogramTooltipFrequency: 'Frequência',
+          meanLabel: 'Média',
+          sigmaOverallLabel: 'Sigma (global)',
+          sigmaWithinLabel: 'Sigma (intra)',
+          nLabel: 'N',
+          subgroupLabel: 'Subgrupo'
+        },
+        en: {
+          reportTitleTemplate: 'Process Capability Report for {{feature}}',
+          defaultFeatureName: 'Process',
+          valueAxisTitle: 'Value',
+          frequencyAxisTitle: 'Frequency',
+          normalCurveLabel: 'Normal Curve',
+          histogramTooltipFrequency: 'Frequency',
+          meanLabel: 'Mean',
+          sigmaOverallLabel: 'Sigma (overall)',
+          sigmaWithinLabel: 'Sigma (within)',
+          nLabel: 'Sample size',
+          subgroupLabel: 'Subgroup'
+        },
+        es: {
+          reportTitleTemplate: 'Informe de Capacidad del Proceso para {{feature}}',
+          defaultFeatureName: 'Proceso',
+          valueAxisTitle: 'Valor',
+          frequencyAxisTitle: 'Frecuencia',
+          normalCurveLabel: 'Curva normal',
+          histogramTooltipFrequency: 'Frecuencia',
+          meanLabel: 'Media',
+          sigmaOverallLabel: 'Sigma (total)',
+          sigmaWithinLabel: 'Sigma (interno)',
+          nLabel: 'Tamaño de la muestra',
+          subgroupLabel: 'Subgrupo'
+        },
+        fr: {
+          reportTitleTemplate: 'Rapport de Capabilité du procédé pour {{feature}}',
+          defaultFeatureName: 'Processus',
+          valueAxisTitle: 'Valeur',
+          frequencyAxisTitle: 'Fréquence',
+          normalCurveLabel: 'Courbe normale',
+          histogramTooltipFrequency: 'Fréquence',
+          meanLabel: 'Moyenne',
+          sigmaOverallLabel: 'Sigma (global)',
+          sigmaWithinLabel: 'Sigma (interne)',
+          nLabel: "Taille de l'échantillon",
+          subgroupLabel: 'Sous-groupe'
+        },
+        de: {
+          reportTitleTemplate: 'Prozessfähigkeitsbericht für {{feature}}',
+          defaultFeatureName: 'Prozess',
+          valueAxisTitle: 'Wert',
+          frequencyAxisTitle: 'Häufigkeit',
+          normalCurveLabel: 'Normalverteilung',
+          histogramTooltipFrequency: 'Häufigkeit',
+          meanLabel: 'Mittelwert',
+          sigmaOverallLabel: 'Sigma (gesamt)',
+          sigmaWithinLabel: 'Sigma (intern)',
+          nLabel: 'Stichprobengröße',
+          subgroupLabel: 'Untergruppe'
+        },
+        zh: {
+          reportTitleTemplate: '过程能力报告（{{feature}}）',
+          defaultFeatureName: '过程',
+          valueAxisTitle: '数值',
+          frequencyAxisTitle: '频率',
+          normalCurveLabel: '正态曲线',
+          histogramTooltipFrequency: '频次',
+          meanLabel: '平均值',
+          sigmaOverallLabel: 'Sigma（总体）',
+          sigmaWithinLabel: 'Sigma（组内）',
+          nLabel: '样本量',
+          subgroupLabel: '子组'
+        },
+        ja: {
+          reportTitleTemplate: '工程能力レポート（{{feature}}）',
+          defaultFeatureName: '工程',
+          valueAxisTitle: '値',
+          frequencyAxisTitle: '頻度',
+          normalCurveLabel: '正規曲線',
+          histogramTooltipFrequency: '頻度',
+          meanLabel: '平均値',
+          sigmaOverallLabel: 'シグマ（全体）',
+          sigmaWithinLabel: 'シグマ（工程内）',
+          nLabel: 'サンプル数',
+          subgroupLabel: 'サブグループ'
+        },
+        ko: {
+          reportTitleTemplate: '공정능력 보고서 ({{feature}})',
+          defaultFeatureName: '공정',
+          valueAxisTitle: '값',
+          frequencyAxisTitle: '빈도',
+          normalCurveLabel: '정규 곡선',
+          histogramTooltipFrequency: '빈도',
+          meanLabel: '평균',
+          sigmaOverallLabel: '시그마(전체)',
+          sigmaWithinLabel: '시그마(공정 내)',
+          nLabel: '샘플 수',
+          subgroupLabel: '소집단'
+        },
+        it: {
+          reportTitleTemplate: 'Report di capacità di processo per {{feature}}',
+          defaultFeatureName: 'Processo',
+          valueAxisTitle: 'Valore',
+          frequencyAxisTitle: 'Frequenza',
+          normalCurveLabel: 'Curva normale',
+          histogramTooltipFrequency: 'Frequenza',
+          meanLabel: 'Media',
+          sigmaOverallLabel: 'Sigma (complessivo)',
+          sigmaWithinLabel: 'Sigma (interno)',
+          nLabel: 'Dimensione del campione',
+          subgroupLabel: 'Sottogruppo'
+        }
+      };
+
+      function getTranslationPack(lang) {
+        return translations[lang] || translations.pt;
+      }
+
+      function translate(lang, key) {
+        var pack = getTranslationPack(lang);
+        return pack[key] || translations.pt[key] || key;
+      }
+
+      function formatReportTitle(lang, featureName) {
+        var template = translate(lang, 'reportTitleTemplate');
+        return template.replace('{{feature}}', featureName);
+      }
+
+      function getResultLanguage(result) {
+        return (result && result.reportLanguage) || document.getElementById('reportLanguage').value || 'pt';
+      }
 
       function handleCalculate() {
         var feature = document.getElementById('feature').value.trim();
@@ -359,6 +496,7 @@
       }
 
       function createResultCard(result) {
+        var lang = getResultLanguage(result);
         var card = document.createElement('section');
         card.className = 'card result-card';
 
@@ -368,8 +506,8 @@
         };
 
         var title = document.createElement('h2');
-        title.textContent =
-          'Process Capability Report for ' + (result.featureName || 'Process');
+        var featureName = result.featureName || translate(lang, 'defaultFeatureName');
+        title.textContent = formatReportTitle(lang, featureName);
 
         var chartContainer = document.createElement('div');
         chartContainer.className = 'chart-container';
@@ -390,6 +528,7 @@
       }
 
       function drawHistogram(result, container) {
+        var lang = getResultLanguage(result);
         var data = result.data;
         var n = data.length;
         var minVal = Math.min.apply(null, data.concat([result.lsl]));
@@ -406,10 +545,10 @@
         });
 
         var table = new google.visualization.DataTable();
-        table.addColumn('number', 'Value');
+        table.addColumn('number', translate(lang, 'valueAxisTitle'));
         table.addColumn({ type: 'string', role: 'tooltip' });
-        table.addColumn('number', 'Frequency');
-        table.addColumn('number', 'Normal Curve');
+        table.addColumn('number', translate(lang, 'frequencyAxisTitle'));
+        table.addColumn('number', translate(lang, 'normalCurveLabel'));
         table.addColumn('number', 'LSL');
         table.addColumn('number', 'USL');
 
@@ -421,7 +560,14 @@
           var center = (binStart + binEnd) / 2;
           var pdf = normalPdf(center, result.mean, result.sigmaOverall);
           var expected = pdf * binWidth * n;
-          var tooltip = binStart.toFixed(2) + ' - ' + binEnd.toFixed(2) + '\nFrequency: ' + bins[i];
+          var tooltip =
+            binStart.toFixed(2) +
+            ' - ' +
+            binEnd.toFixed(2) +
+            '\n' +
+            translate(lang, 'histogramTooltipFrequency') +
+            ': ' +
+            bins[i];
           maxFreq = Math.max(maxFreq, bins[i], expected);
           rows.push([center, tooltip, bins[i], expected, null, null]);
         }
@@ -446,9 +592,9 @@
 
         var options = {
           legend: { position: 'top' },
-          vAxis: { title: 'Frequency' },
+          vAxis: { title: translate(lang, 'frequencyAxisTitle') },
           hAxis: {
-            title: 'Value',
+            title: translate(lang, 'valueAxisTitle'),
             viewWindow: { min: chartMin, max: chartMax }
           },
           colors: ['#1e88e5', '#000000', '#c62828', '#c62828'],
@@ -509,6 +655,7 @@
       }
 
       function updateStats(result, container) {
+        var lang = getResultLanguage(result);
         var formatter = function(value) { return Number(value).toFixed(3); };
         container.innerHTML = '';
 
@@ -520,13 +667,13 @@
         ];
 
         var supportingMetrics = [
-          { label: 'Média', value: formatter(result.mean) },
-          { label: 'Sigma (overall)', value: formatter(result.sigmaOverall) },
-          { label: 'Sigma (within)', value: formatter(result.sigmaWithin) },
-          { label: 'N', value: result.n },
+          { label: translate(lang, 'meanLabel'), value: formatter(result.mean) },
+          { label: translate(lang, 'sigmaOverallLabel'), value: formatter(result.sigmaOverall) },
+          { label: translate(lang, 'sigmaWithinLabel'), value: formatter(result.sigmaWithin) },
+          { label: translate(lang, 'nLabel'), value: result.n },
           { label: 'LSL', value: formatter(result.lsl) },
           { label: 'USL', value: formatter(result.usl) },
-          { label: 'Subgrupo', value: result.subgroupSize }
+          { label: translate(lang, 'subgroupLabel'), value: result.subgroupSize }
         ];
 
         var highlightWrapper = document.createElement('div');
