@@ -65,10 +65,25 @@
         background: #90a4ae;
         cursor: not-allowed;
       }
-      #results {
+      #resultsSection {
         display: none;
+        margin-top: 32px;
       }
-      #chart-container {
+      .results-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .results-collection {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .result-card {
+        padding-top: 16px;
+      }
+      .chart-container {
         width: 100%;
         height: 520px;
       }
@@ -126,7 +141,7 @@
           grid-template-columns: repeat(3, minmax(220px, 1fr));
           gap: 20px;
         }
-        #chart-container {
+        .chart-container {
           height: 580px;
         }
         .stats {
@@ -167,15 +182,24 @@
         <p id="status" style="text-align:center; margin-top:10px; font-weight:600;"></p>
       </section>
 
-      <section id="results" class="card">
-        <h2 id="reportTitle"></h2>
-        <div id="chart-container"></div>
-        <div class="stats" id="stats"></div>
+      <section id="resultsSection">
+        <div class="results-actions">
+          <button id="exportBtn" onclick="exportResultsAsPdf()" disabled>
+            Exportar resultados em PDF
+          </button>
+          <button id="clearBtn" onclick="clearResults()" disabled>
+            Limpar estudos
+          </button>
+        </div>
+        <div id="resultsCollection" class="results-collection"></div>
       </section>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
       google.charts.load('current', { packages: ['corechart'] });
+      var resultEntries = [];
 
       function handleCalculate() {
         var feature = document.getElementById('feature').value.trim();
@@ -209,14 +233,44 @@
       }
 
       function renderResults(result) {
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('reportTitle').textContent =
-          'Process Capability Report for ' + (result.featureName || 'Process');
-        drawHistogram(result);
-        updateStats(result);
+        var section = document.getElementById('resultsSection');
+        var collection = document.getElementById('resultsCollection');
+        var entry = createResultCard(result);
+        collection.appendChild(entry.card);
+        drawHistogram(result, entry.chartContainer);
+        updateStats(result, entry.statsContainer);
+        resultEntries.push(entry);
+        section.style.display = 'block';
+        updateActionButtons();
       }
 
-      function drawHistogram(result) {
+      function createResultCard(result) {
+        var card = document.createElement('section');
+        card.className = 'card result-card';
+
+        var title = document.createElement('h2');
+        title.textContent =
+          'Process Capability Report for ' + (result.featureName || 'Process');
+
+        var chartContainer = document.createElement('div');
+        chartContainer.className = 'chart-container';
+        chartContainer.id = 'chart-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+
+        var statsContainer = document.createElement('div');
+        statsContainer.className = 'stats';
+
+        card.appendChild(title);
+        card.appendChild(chartContainer);
+        card.appendChild(statsContainer);
+
+        return {
+          card: card,
+          chartContainer: chartContainer,
+          statsContainer: statsContainer
+        };
+      }
+
+      function drawHistogram(result, container) {
         var data = result.data;
         var n = data.length;
         var minVal = Math.min.apply(null, data.concat([result.lsl]));
@@ -292,10 +346,10 @@
           chartArea: { width: '80%', height: '70%' }
         };
 
-        var container = document.getElementById('chart-container');
-        var chart = new google.visualization.ComboChart(container);
+        var chartContainer = typeof container === 'string' ? document.getElementById(container) : container;
+        var chart = new google.visualization.ComboChart(chartContainer);
         google.visualization.events.addListener(chart, 'ready', function() {
-          ensureWideBars(container);
+          ensureWideBars(chartContainer);
         });
         chart.draw(table, options);
       }
@@ -332,8 +386,8 @@
         return (1 / (sigma * Math.sqrt(2 * Math.PI))) * exponent;
       }
 
-      function updateStats(result) {
-        var stats = document.getElementById('stats');
+      function updateStats(result, container) {
+        var stats = container;
         var formatter = function(value) { return Number(value).toFixed(3); };
         stats.innerHTML = '';
         var entries = [
@@ -384,6 +438,70 @@
           bar.setAttribute('width', MIN_BAR_WIDTH);
         });
       }
+
+      function updateActionButtons() {
+        var hasResults = resultEntries.length > 0;
+        document.getElementById('exportBtn').disabled = !hasResults;
+        document.getElementById('clearBtn').disabled = !hasResults;
+      }
+
+      async function exportResultsAsPdf() {
+        if (!resultEntries.length) {
+          return;
+        }
+        var statusEl = document.getElementById('status');
+        statusEl.textContent = 'Gerando PDF...';
+        document.getElementById('exportBtn').disabled = true;
+        document.getElementById('clearBtn').disabled = true;
+
+        var { jsPDF } = window.jspdf;
+        var pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+        for (var i = 0; i < resultEntries.length; i++) {
+          var card = resultEntries[i].card;
+          var canvas = await html2canvas(card, { scale: 2, useCORS: true });
+          var imgData = canvas.toDataURL('image/png');
+          var pageWidth = pdf.internal.pageSize.getWidth();
+          var pageHeight = pdf.internal.pageSize.getHeight();
+          var ratio = Math.min((pageWidth * 0.9) / canvas.width, (pageHeight * 0.9) / canvas.height);
+          var imgWidth = canvas.width * ratio;
+          var imgHeight = canvas.height * ratio;
+          var x = (pageWidth - imgWidth) / 2;
+          var y = (pageHeight - imgHeight) / 2;
+
+          pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+          if (i < resultEntries.length - 1) {
+            pdf.addPage();
+          }
+        }
+
+        pdf.save('analise-capabilidade.pdf');
+        statusEl.textContent = '';
+        updateActionButtons();
+      }
+
+      function clearResults() {
+        if (!resultEntries.length) {
+          return;
+        }
+        var confirmClear = confirm('Tem certeza de que deseja limpar os estudos? Certifique-se de já ter exportado os dados desejados, pois eles serão perdidos.');
+        if (!confirmClear) {
+          return;
+        }
+        document.getElementById('resultsCollection').innerHTML = '';
+        document.getElementById('resultsSection').style.display = 'none';
+        resultEntries = [];
+        updateActionButtons();
+      }
+
+      window.addEventListener('beforeunload', function(event) {
+        if (resultEntries.length > 0) {
+          var message = 'Existem estudos não exportados. Já exportou os PDFs necessários? Os dados serão perdidos.';
+          event.preventDefault();
+          event.returnValue = message;
+          return message;
+        }
+      });
     </script>
   </body>
 </html>
